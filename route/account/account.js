@@ -1,6 +1,7 @@
 const express = require('express')
 const route = express.Router()
 const bodyParser = require('body-parser')
+// const bodyParser = express.bodyParser()
 const crypto = require('crypto-js')
 const jwt = require('jsonwebtoken')
 
@@ -28,7 +29,7 @@ route.post('/login', bodyParser.json(), function (req, res, next) {
         console.log('user login success: ', rows.rowCount, rows.rows[ 0 ])
         let timestamp = Date.parse(new Date())
         let token = jwt.sign(
-            { username: req.body.username, useraccount: rows.rows[ 0 ][ 'user_account' ] },
+            { username: req.body.username, useraccount: rows.rows[ 0 ][ 'user_account' ], useridentify:rows.rows[ 0 ][ 'user_identify' ] },
             "postgres",
             { expiresIn: 60 }
         )
@@ -48,6 +49,7 @@ route.post('/login', bodyParser.json(), function (req, res, next) {
             msg: "登录成功",
             status: "200",
             user: rows.rows[ 0 ][ "user_account" ],
+            identify: rows.rows[ 0 ][ 'user_identify' ],
             token
         })
     })
@@ -97,16 +99,18 @@ route.post('/register', bodyParser.json(), function (req, response, next) {
                 })
             } else {
                 let data = req.body
+                data.useraccount = data.useraccount.replace(/(^\s*)|(\s*$)/g, "");
+                data.username = data.username.replace(/(^\s*)|(\s*$)/g, "");
                 postgresql(
-                    "insert into user_login  (user_account,username,user_password) values ($1, $2, $3)",
-                    [ data.useraccount, data.username, password ],
+                    "insert into user_login  (user_account,username,user_password,user_identify) values ($1, $2, $3, 'normal')",
+                    [ data.useraccount, data.username, password.replace(/(^\s*)|(\s*$)/g, "") ],
                     function (err, rows) {
                         if (err) {
                             console.log('user register err: ', err)
                             return
                         }
                         let token = jwt.sign(
-                            { username: data.username, useraccount: data.useraccount },
+                            { username: data.username, useraccount: data.useraccount, useridentify: 'normal' },
                             "postgres",
                             { expiresIn: 60 }
                         )
