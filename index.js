@@ -5,6 +5,8 @@ const ws = require("nodejs-websocket")
 
 const account = require("./route/account/account")
 const paper = require("./route/paper/paper")
+const question = require("./route/question/question")
+const admin = require("./route/admin/admin")
 const port = "1730"
 
 app.use("/", function (req, res, next) {
@@ -20,6 +22,8 @@ app.get("/123", function (req, res, next) {
 
 app.use("/account", account)
 app.use("/paper", paper)
+app.use("/question", question)
+app.use("/admin", admin)
 
 
 app.listen(port, function (err) {

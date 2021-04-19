@@ -13,7 +13,7 @@ route.post('/login', bodyParser.json(), function (req, res, next) {
     password = crypto.enc.Utf8.stringify(password)
     params.push(req.body.username)
     params.push(password)
-    console.log("newp", params)
+    // console.log("newp", params)
     postgresql("select * from user_login where username = $1 and user_password = $2", params, function (err, rows) {
         if (err) {
             console.log('user login err: ', err)
@@ -25,15 +25,16 @@ route.post('/login', bodyParser.json(), function (req, res, next) {
                 msg: "登录失败",
                 status: "200"
             })
+            return
         }
-        console.log('user login success: ', rows.rowCount, rows.rows[ 0 ])
+        // console.log('user login success: ', rows.rowCount, rows.rows[ 0 ])
         let timestamp = Date.parse(new Date())
         let token = jwt.sign(
             { username: req.body.username, useraccount: rows.rows[ 0 ][ 'user_account' ], useridentify:rows.rows[ 0 ][ 'user_identify' ] },
             "postgres",
             { expiresIn: 60 }
         )
-        console.log(token)
+        // console.log(token)
         jwt.verify(token, "postgres", (err, decode) => {
             if (err) {
                 res.send({
@@ -41,8 +42,34 @@ route.post('/login', bodyParser.json(), function (req, res, next) {
                     msg: "当前登录失败，token失效了！"
                 })
             }
-            console.log("decode", decode)
+            // console.log("decode", decode)
             console.log(timestamp / 1000)
+        })
+        postgresql("select max(behaviorno) from userlog",[],function(err,userlogrows){
+            if(err){
+                console.log("select max(behaviorno) error: ", err)
+            }else{
+                let logvalue = []
+                console.log("select max(behaviorno) sucess: ", userlogrows.rows)
+                if(userlogrows.rows[0].max){
+                    logvalue[0] = ++userlogrows.rows[0].max
+                }else{
+                    logvalue[0] = 1
+                }
+                logvalue[1] = rows.rows[ 0 ][ "user_account" ]
+                logvalue[2] = rows.rows[ 0 ][ 'user_identify' ]
+                logvalue[3] = req.body.username
+                logvalue[4] = new Date().toLocaleString()
+                logvalue[5] = "登录"
+                postgresql("insert into userlog (behaviorno,user_account,user_identify,username,behaviordate,behavior) values ($1,$2,$3,$4,$5,$6)",logvalue,function(err,r){
+                    if(err){
+                        console.log("insert into userlog 登录 error: ", err)
+                    }else{
+                        console.log("insert into userlog 登录 success")
+                    }
+                })
+                console.log(logvalue)
+            }
         })
         res.send({
             err: 0,
@@ -50,6 +77,7 @@ route.post('/login', bodyParser.json(), function (req, res, next) {
             status: "200",
             user: rows.rows[ 0 ][ "user_account" ],
             identify: rows.rows[ 0 ][ 'user_identify' ],
+            account: req.body.username,
             token
         })
     })
@@ -114,6 +142,31 @@ route.post('/register', bodyParser.json(), function (req, response, next) {
                             "postgres",
                             { expiresIn: 60 }
                         )
+                        postgresql("select max(behaviorno) from userlog",[],function(err,userlogrows){
+                            if(err){
+                                console.log("select max(behaviorno) cancel error: ", err)
+                            }else{
+                                let logvalue = []
+                                console.log("select max(behaviorno) cancel sucess: ", userlogrows.rows)
+                                if(userlogrows.rows[0].max){
+                                    logvalue[0] = ++userlogrows.rows[0].max
+                                }else{
+                                    logvalue[0] = 1
+                                }
+                                logvalue[1] = data.useraccount
+                                logvalue[2] = "normal"
+                                logvalue[3] = data.username
+                                logvalue[4] = new Date().toLocaleString()
+                                logvalue[5] = "注册"
+                                postgresql("insert into userlog (behaviorno,user_account,user_identify,username,behaviordate,behavior) values ($1,$2,$3,$4,$5,$6)",logvalue,function(err,r){
+                                    if(err){
+                                        console.log("insert into userlog 注册 error: ", err)
+                                    }else{
+                                        console.log("insert into userlog 注册 success")
+                                    }
+                                })
+                            }
+                        })
                         response.send({
                             err: 0,
                             msg: "success",
@@ -124,6 +177,34 @@ route.post('/register', bodyParser.json(), function (req, response, next) {
                     })
             }
         })
+})
+
+route.get('/cancel',function(req,res){
+    postgresql("select max(behaviorno) from userlog",[],function(err,userlogrows){
+        if(err){
+            console.log("select max(behaviorno) cancel error: ", err)
+        }else{
+            let logvalue = []
+            console.log("select max(behaviorno) cancel sucess: ", userlogrows.rows)
+            if(userlogrows.rows[0].max){
+                logvalue[0] = ++userlogrows.rows[0].max
+            }else{
+                logvalue[0] = 1
+            }
+            logvalue[1] = req.query.user
+            logvalue[2] = req.query.identify
+            logvalue[3] = req.query.account
+            logvalue[4] = new Date().toLocaleString()
+            logvalue[5] = "注销"
+            postgresql("insert into userlog (behaviorno,user_account,user_identify,username,behaviordate,behavior) values ($1,$2,$3,$4,$5,$6)",logvalue,function(err,r){
+                if(err){
+                    console.log("insert into userlog 注销 error: ", err)
+                }else{
+                    console.log("insert into userlog 注销 success")
+                }
+            })
+        }
+    })
 })
 
 module.exports = route
