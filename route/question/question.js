@@ -21,6 +21,18 @@ route.get("/getQuestionList", function(req,res){
     })
 })
 
+route.get("/getquestion", function(req,res){
+    console.log("getquestion onloading ......")
+    postgresql("select * from question where questionno = $1",[req.query.questionno],function(err,rows){
+        if(err){
+            console.log("getQuestion error：", err)
+        }else{
+            console.log("getQuestion success：", err)
+            res.send(rows.rows)
+        }
+    })
+})
+
 route.post("/uploadQuestion", function(req, res){
     console.log(123)
     let questiondate = new Date()

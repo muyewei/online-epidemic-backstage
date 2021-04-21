@@ -61,7 +61,7 @@ route.post("/onloadPaper", function(req, res){
                     if(err){
                         console.log("insert into paper fail: ", err)
                     }
-                    console.log("insert into paper success: ", rows)
+                    console.log("insert into paper success")
                 })
                 postgresql("select max(behaviorno) from paperlog",[],function(err,paperlogrows){
                     if(err){
@@ -127,6 +127,42 @@ route.get("/deletepaper",function(req,res){
                     })
                 }
             }) 
+        }
+    })
+})
+
+route.get("/setpaperopen",function(req,res){
+    postgresql("update paper set paperstate = $1 where paperno = $2",["开放",req.query.paperno],function(err,rows){
+        if(err){
+            console.log("setpaperopen Error: ", err)
+        }else{
+            console.log("setpaperopen Success")
+            res.send("setpaperopen Success")
+        }
+    })
+})
+
+route.get("/getPaperOpenList", function(req,res){
+    console.log(req.query)
+    postgresql("select * from paper where user_account = $1 and paperstate = $2",[req.query.user,"开放"],function(err,rows){
+        if(err){
+            console.log("Get PaperOpenList Error: ", err)
+        }else{
+            console.log("Get PaperOpenList Success")
+            res.send(rows.rows)
+        }
+    })
+})
+
+route.get("/setpaperclose",function(req,res){
+    console.log("setpaperclosesetpaperclose")
+    postgresql("update paper set paperstate = $1 where paperno = $2",["禁止",req.query.paperno],function(err,rows){
+        if(err){
+            console.log("setpaperclose Error: ", err)
+            res.send("setpaperclose Error")
+        }else{
+            console.log("setpaperclose Success")
+            res.send("setpaperclose Success")
         }
     })
 })
