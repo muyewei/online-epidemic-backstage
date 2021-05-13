@@ -1,5 +1,6 @@
 const express = require("express")
 const app = express()
+const path = require("path")
 
 const ws = require("nodejs-websocket")
 
@@ -26,6 +27,10 @@ app.use("/paper", paper)
 app.use("/question", question)
 app.use("/admin", admin)
 app.use("/normal", normal)
+app.use('/image/extension',express.static(path.join(__dirname, 'files/extensionpicture')));
+app.use('/image/headportrait',express.static(path.join(__dirname, 'files/headportrait')));
+app.use('/image/letter',express.static(path.join(__dirname, 'files/letterpicture')));
+app.use('/files/filedownload',express.static(path.join(__dirname, 'files/filedownload')));
 
 
 app.listen(port, function (err) {

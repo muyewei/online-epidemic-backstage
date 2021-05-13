@@ -33,7 +33,7 @@ route.get("/getPaperList", function(req,res){
     })
 })
 
-route.post("/onloadPaper", function(req, res){
+route.post("/uploadPaper", function(req, res){
     let paperdate = new Date()
     let paper = req.body.paper
     let sqlvalue = []
@@ -45,9 +45,9 @@ route.post("/onloadPaper", function(req, res){
     // console.log("sqlvalue", sqlvalue)
     postgresql("select max(paperno) from paper", "", function(err, rows){
         if(err){
-            console.log("onloadPaper: ", err)
+            // console.log("onloadPaper: ", err)
         }else{
-            console.log("max(paperno) ", rows.rows)
+            // console.log("max(paperno) ", rows.rows)
             if(req.body.paperno === 0){
                 let maxValue = rows.rows[0].max
                 if(!rows.rows[0].max){
@@ -56,8 +56,8 @@ route.post("/onloadPaper", function(req, res){
                     maxValue++
                 }
                 sqlvalue.push(maxValue)
-                // console.log("onload paper --> sqlvalue", sqlvalue)
-                postgresql("insert into paper ( papername , paperbrief , paperstyle , papertime , paperpassword , papervalue , paperdate , user_account , paperno ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)", sqlvalue, function(err, rows){
+                console.log("onload paper --> sqlvalue", sqlvalue)
+                postgresql("insert into paper ( papername , paperbrief , paperstyle , papertime , paperpassword , papervalue , paperdate , user_account , paperno,paperstate,visitnum ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)", [...sqlvalue,"禁止",0], function(err, rows){
                     if(err){
                         console.log("insert into paper fail: ", err)
                     }
@@ -79,7 +79,7 @@ route.post("/onloadPaper", function(req, res){
                         logvalue[3] = req.body.paper.paperbrief
                         logvalue[4] = new Date().toLocaleString()
                         logvalue[5] = "上传"
-                        postgresql("insert into paperlog (behaviorno,user_account,papername,paperbrief,behaviordate,behavior) values ($1,$2,$3,$4,$5,$6)",logvalue,function(err,r){
+                        postgresql("insert into paperlog (behaviorno,useraccount,papername,paperbrief,behaviordate,behavior) values ($1,$2,$3,$4,$5,$6)",logvalue,function(err,r){
                             if(err){
                                 console.log("insert into paperlog 上传 error: ", err)
                             }else{
@@ -118,7 +118,7 @@ route.get("/deletepaper",function(req,res){
                     logvalue[3] = ""
                     logvalue[4] = new Date().toLocaleString()
                     logvalue[5] = "删除"
-                    postgresql("insert into paperlog (behaviorno,user_account,papername,paperbrief,behaviordate,behavior) values ($1,$2,$3,$4,$5,$6)",logvalue,function(err,r){
+                    postgresql("insert into paperlog (behaviorno,useraccount,papername,paperbrief,behaviordate,behavior) values ($1,$2,$3,$4,$5,$6)",logvalue,function(err,r){
                         if(err){
                             console.log("insert into paperlog 删除 error: ", err)
                         }else{
@@ -163,6 +163,120 @@ route.get("/setpaperclose",function(req,res){
         }else{
             console.log("setpaperclose Success")
             res.send("setpaperclose Success")
+        }
+    })
+})
+
+route.post("/uploadletter",express.json(),function(req,res){
+    console.log("123123")
+    let {username,useraccount,letter,title,type,brief,cover} = req.body
+    let uploaddate = new Date().toLocaleString()
+    postgresql("select max(letterno) from letter", [], function(err, rows){
+        if(err){
+            console.log("select max(letterno): error", err)
+        }else{
+            let maxValue = rows.rows[0].max
+            if(!rows.rows[0].max){
+                maxValue = 1
+            }else{
+                maxValue++
+            }
+            postgresql("insert into letter ( username,useraccount,letter,title,type,letterno,letterdate,brief,cover ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)", [username,useraccount,letter,title,type,maxValue,uploaddate,brief,cover], function(err, rows){
+                if(err){
+                    console.log("insert into letter fail: ", err)
+                    res.send({ status: 200, data: '', msg: 'error'});
+                }
+                console.log("insert into letter success")
+                res.send({ status: 200, data: '', msg: 'success'});
+            })
+        }
+    })
+})
+
+route.get("/getletterlist",function(req,res){
+    postgresql("select * from letter order by letterno desc offset $1 limit $2",[(req.query.page-1)*10,10],function(err,values){
+        if(err){
+            console.log("select * from letter error: ", err)
+            res.send({msg: "error"})
+        }else{
+            console.log("select * from letter success")
+            res.send({msg: "success",letterlist: values.rows})
+        }
+    })
+})
+
+route.get("/getletterdetails",function(req,res){
+    postgresql("select * from letter where letterno = $1",[req.query.letterno],function(err,values){
+        if(err){
+            console.log("select * from letter details error: ", err)
+            res.send({msg: "error"})
+        }else{
+            console.log("select * from letter details success")
+            postgresql("select headportrait from user_login where useraccount = $1",[values.rows[0].useraccount],function(err,h){
+                if(err){
+                    console.log("select * from letter details headportrait error: ", err)
+                    res.send({msg: "error"})
+                }else{
+                    console.log("select * from letter details headportrait success")
+                    res.send({msg: "success",letterdetails: values.rows[0],headportrait: h.rows[0]})
+                }
+            })
+        }
+    })
+})
+
+route.get("/gethotletter",function(req,res){
+    postgresql("select letterno,likes,title from letter order by likes limit 5", [], function (err, values) {
+        if(err){
+            console.log("select letterno,likes from letter error: ",err)
+            res.send({ status: 200, data: '', msg: 'error'});
+        }else{
+            console.log("select letterno,likes from letter success")
+            res.send({ status: 200, data: values.rows, msg: 'success'});
+        }
+    })
+})
+
+
+route.get("/checkpaperdetails", function(req,res){
+    let paper = new Promise((resolve,reject)=>{
+        postgresql("select papername,papervalue from paper where paperno = $1",[req.query.paperno],function(err,values){
+            if(err){
+                console.log("checkpaperdetails select paper error: ", err)
+            }else{
+                console.log("checkpaperdetails select paper success")
+                resolve(values.rows)
+            }
+        })
+    })
+    let answer = new Promise((resolve,reject)=>{
+        postgresql("select answer from papertest where paperno = $1",[req.query.paperno],function(err,values){
+            if(err){
+                console.log("checkpaperdetails select answer error: ", err)
+            }else{
+                console.log("checkpaperdetails select answer success")
+                resolve(values.rows)
+            }
+        })
+    })
+    
+    Promise.all([paper,answer])
+    .then(data=>{
+        res.send(data)
+    })
+    .catch(err=>{
+        console.log("checkpaperdetails err: ", err)
+    })
+})
+
+route.get("/addletterlike",function(req,res){
+    postgresql("update letter set likes = $1 where letterno = $2", [req.query.likes,req.query.letterno], function (err, values) {
+        if(err){
+            console.log("update letter set likes",err)
+            res.send({ status: 200, data: '', msg: 'error'});
+        }else{
+            console.log("update letter set likes success")
+            res.send({ status: 200, data: values.rows, msg: 'success'});
         }
     })
 })

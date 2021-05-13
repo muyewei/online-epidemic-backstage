@@ -16,7 +16,7 @@ route.get("/getlatestpaper",function(req,res){
 })
 
 route.get("/getlatesttimelimit",function(req,res){
-    postgresql("select papername,papertime,paperbrief,user_account,paperno from paper where paperstate=$1 and papertime <> $2 order by paperdate desc limit 10",["开放",""],function(err,v){
+    postgresql("select papername,papertime,paperbrief,user_account,paperno from paper where paperstate=$1 and papertime <> $2 and paperpassword = $3 order by paperdate desc limit 10",["开放","",""],function(err,v){
         if(err){
             console.log("getlatestpaper(timelimit) error: ",err)
         }else{
@@ -27,7 +27,7 @@ route.get("/getlatesttimelimit",function(req,res){
 })
 
 route.get("/getlatestpassword",function(req,res){
-    postgresql("select papername,paperpassword,paperbrief,user_account,paperno,paperpassword from paper where paperstate=$1 and paperpassword <> $2 order by paperdate desc limit 10",["开放",""],function(err,v){
+    postgresql("select papername,paperpassword,paperbrief,user_account,paperno,paperpassword,papertime from paper where paperstate=$1 and paperpassword <> $2 order by paperdate desc limit 10",["开放",""],function(err,v){
         if(err){
             console.log("getlatestpaper(password) error: ",err)
         }else{
@@ -91,8 +91,9 @@ route.post("/submitpapertest", function(req,res){
             testvalue[3] = req.body.papername
             testvalue[4] = new Date().toLocaleString()
             testvalue[5] = req.body.timecosume
-            testvalue[6] = req.body.user_account
-            postgresql("insert into papertest (papertestno,answer,paperno,papername,submitdate,timecosume,user_account) values ($1,$2,$3,$4,$5,$6,$7)",testvalue,function(err,r){
+            testvalue[6] = req.body.useraccount
+            testvalue[7] = req.body.username
+            postgresql("insert into papertest (papertestno,answer,paperno,papername,submitdate,timecosume,useraccount,username) values ($1,$2,$3,$4,$5,$6,$7,$8)",testvalue,function(err,r){
                 if(err){
                     console.log("insert into papertest 上传 error: ", err)
                 }else{
@@ -102,5 +103,7 @@ route.post("/submitpapertest", function(req,res){
         }
     }) 
 })
+
+
 
 module.exports = route
